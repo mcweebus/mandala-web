@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mandala — layer ii</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #ffffff;
+  --text:    #111111;
+  --dim:     #666660;
+  --dimmer:  #999994;
+  --accent:  #3a7a3a;
+  --amber:   #7a5a20;
+  --number:  #222222;
+  --border:  #ddddda;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  min-height: 100vh;
+  padding: 2.5rem 3rem;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+#header {
+  margin-bottom: 2.5rem;
+}
+#title {
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+}
+#title em {
+  color: var(--text);
+  font-style: normal;
+}
+
+/* ── Layout ─────────────────────────────────────────── */
+#main {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 4rem;
+  max-width: 820px;
+}
+
+.section-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+  margin-bottom: 1.1rem;
+}
+
+/* ── Resources ──────────────────────────────────────── */
+.resource-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  column-gap: 1rem;
+  margin-bottom: 0.55rem;
+}
+.resource-row.hidden { display: none; }
+
+.res-name  { color: var(--dim); }
+.res-value { color: var(--number); text-align: right; min-width: 5ch; }
+.res-rate  { color: var(--dimmer); font-size: 11px; text-align: right; min-width: 8ch; }
+
+/* Oxygen win meter */
+#oxygen-block {
+  margin-top: 1.8rem;
+  padding-top: 1.3rem;
+  border-top: 1px solid var(--border);
+}
+#oxygen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.6rem;
+}
+#oxygen-name { color: var(--dim); font-size: 13px; }
+#oxygen-val  { color: var(--number); font-size: 13px; }
+
+#bar-track {
+  height: 3px;
+  background: var(--border);
+}
+#bar-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.6s ease;
+}
+#oxygen-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--dimmer);
+  margin-top: 0.4rem;
+}
+
+/* ── Carry bonus notice ──────────────────────────────── */
+#carry-notice {
+  font-size: 11px;
+  color: var(--dimmer);
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: none;
+}
+
+/* ── Actions ─────────────────────────────────────────── */
+.action-btn, .upgrade-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 0.55rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+.action-btn:hover:not(:disabled),
+.upgrade-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.action-btn:disabled,
+.upgrade-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.btn-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 0.15rem;
+}
+
+/* ── Log ─────────────────────────────────────────────── */
+#log-section {
+  margin-top: 3rem;
+  max-width: 820px;
+}
+#log {
+  font-size: 12px;
+  color: var(--dim);
+  min-height: 2rem;
+}
+#log p {
+  margin-bottom: 0.25rem;
+  opacity: 0.5;
+  transition: opacity 2.5s ease;
+}
+#log p.fresh {
+  opacity: 1;
+  color: var(--text);
+}
+
+/* ── Dissolution overlay ─────────────────────────────── */
+#dissolve {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  padding: 4rem 5rem;
+  flex-direction: column;
+  justify-content: center;
+}
+#dissolve.active { display: flex; }
+
+#dissolve-lines p {
+  color: var(--dim);
+  font-size: 15px;
+  margin-bottom: 1.2rem;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+#dissolve-lines p.show { opacity: 1; }
+
+#dissolve-echo {
+  margin-top: 0.5rem;
+  font-size: 12px;
+  color: var(--dimmer);
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+#dissolve-echo.show { opacity: 1; }
+
+#dissolve-cta {
+  margin-top: 3.5rem;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--dimmer);
+  opacity: 0;
+  transition: opacity 1.5s ease;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-transform: uppercase;
+  padding: 0;
+}
+#dissolve-cta.show { opacity: 0.45; }
+#dissolve-cta:hover { opacity: 0.9 !important; color: var(--text); }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="title">mandala &nbsp;·&nbsp; <em>layer ii</em> &nbsp;·&nbsp; cyanobacteria</div>
+</div>
+
+<div id="main">
+
+  <!-- LEFT: Resources -->
+  <div id="resources-panel">
+    <div class="section-label">atmospheric chemistry</div>
+
+    <div class="resource-row" id="row-light">
+      <span class="res-name">light</span>
+      <span class="res-value" id="val-light">0.0</span>
+      <span class="res-rate"  id="rate-light">+0.00/s</span>
+    </div>
+
+    <div class="resource-row" id="row-glucose">
+      <span class="res-name">glucose</span>
+      <span class="res-value" id="val-glucose">0.0</span>
+      <span class="res-rate"  id="rate-glucose">+0.00/s</span>
+    </div>
+
+    <div class="resource-row hidden" id="row-co2">
+      <span class="res-name">co₂</span>
+      <span class="res-value" id="val-co2">0.0</span>
+      <span class="res-rate"  id="rate-co2">+0.00/s</span>
+    </div>
+
+    <!-- Oxygen win meter -->
+    <div id="oxygen-block">
+      <div id="oxygen-header">
+        <span id="oxygen-name">atmospheric oxygen</span>
+        <span id="oxygen-val">0.0 / 100</span>
+      </div>
+      <div id="bar-track"><div id="bar-fill"></div></div>
+      <div id="oxygen-meta">
+        <span id="stage-label">anoxic world</span>
+        <span id="o2-rate-label"></span>
+      </div>
+    </div>
+
+    <!-- Carry bonus from layer i -->
+    <div id="carry-notice"></div>
+  </div>
+
+  <!-- RIGHT: Actions -->
+  <div id="actions-panel">
+    <div class="section-label">actions</div>
+
+    <button class="action-btn" id="btn-photosynthesize" disabled>
+      photosynthesize
+      <span class="btn-sub">consume 1 light → 0.4 glucose + 0.1 oxygen</span>
+    </button>
+
+    <div id="upgrades"></div>
+  </div>
+
+</div>
+
+<!-- Log -->
+<div id="log-section">
+  <div class="section-label">observations</div>
+  <div id="log"></div>
+</div>
+
+<!-- Dissolution screen -->
+<div id="dissolve">
+  <div id="dissolve-lines"></div>
+  <div id="dissolve-echo"></div>
+  <button id="dissolve-cta">the light changed everything &nbsp;·&nbsp; continue</button>
+</div>
+
+<script>
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const WIN_OXYGEN = 100;
+const TICK_MS    = 80;
+
+// ─── Carry state from layer i ─────────────────────────────────────────────────
+// Read substrate quality from localStorage if layer i was completed.
+// Bonus: better substrate → higher starting light rate (conditioned surface).
+
+function loadCarry() {
+  try {
+    const raw = localStorage.getItem('mandala_carry_l1');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+const carry   = loadCarry();
+const subBonus = carry ? Math.min(carry.substrate_fraction ?? 0, 1) * 0.12 : 0;
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const s = {
+  light:   0,
+  glucose: 0,
+  co2:     0,
+  oxygen:  0,
+
+  lightRate:   0.20 + subBonus,
+  co2Rate:     0,
+  glucoseRate: 0,
+  oxygenRate:  0,
+
+  glucoseMulti: 1,
+  oxygenMulti:  1,
+
+  bought:           new Set(),
+  visible:          new Set(),
+  loggedMilestones: new Set(),
+
+  phase:    'play',
+  lastTick: null,
+};
+
+// ─── Upgrades ─────────────────────────────────────────────────────────────────
+
+const UPGRADES = [
+  {
+    id:    'harvesting',
+    label: 'light harvesting complex',
+    sub:   'passive photosynthesis — +0.10 glucose/s, +0.02 oxygen/s',
+    cost:  { glucose: 15 },
+    show:  () => s.glucose >= 4,
+    buy()  { s.glucoseRate += 0.10; s.oxygenRate += 0.02; },
+    log:   'the conversion runs without you',
+  },
+  {
+    id:    'pigment',
+    label: 'pigment diversity',
+    sub:   'capture more wavelengths — +0.28 light/s',
+    cost:  { glucose: 28 },
+    show:  () => s.bought.has('harvesting'),
+    buy()  { s.lightRate += 0.28; },
+    log:   'the spectrum opens',
+  },
+  {
+    id:    'fixation',
+    label: 'carbon fixation cycle',
+    sub:   'more efficient CO₂ use — unlocks co₂, +0.12 glucose/s',
+    cost:  { glucose: 55 },
+    show:  () => s.bought.has('pigment'),
+    buy()  {
+      s.glucoseRate += 0.12;
+      s.co2Rate = 0.18;
+      document.getElementById('row-co2').classList.remove('hidden');
+    },
+    log:   'something atmospheric enters the process',
+  },
+  {
+    id:    'colonial',
+    label: 'colonial growth',
+    sub:   'more cells — 1.8× glucose production',
+    cost:  { glucose: 110 },
+    show:  () => s.bought.has('fixation'),
+    buy()  { s.glucoseMulti *= 1.8; },
+    log:   'the colony thickens at the surface',
+  },
+  {
+    id:    'mat',
+    label: 'surface mat formation',
+    sub:   'spread across the water — +0.4 light/s',
+    cost:  { glucose: 185 },
+    show:  () => s.bought.has('colonial'),
+    buy()  { s.lightRate += 0.4; },
+    log:   'the mat reaches the edge of what it can see',
+  },
+  {
+    id:    'harvesting2',
+    label: 'secondary harvesting complex',
+    sub:   'another layer of capture — +0.18 glucose/s, +0.04 oxygen/s',
+    cost:  { glucose: 290, co2: 8 },
+    show:  () => s.bought.has('mat') && s.co2 >= 4,
+    buy()  { s.glucoseRate += 0.18; s.oxygenRate += 0.04; },
+    log:   null,
+  },
+  {
+    id:    'thylakoid',
+    label: 'thylakoid stacking',
+    sub:   'denser internal membranes — 1.6× all glucose',
+    cost:  { glucose: 460, co2: 20 },
+    show:  () => s.bought.has('harvesting2'),
+    buy()  { s.glucoseMulti *= 1.6; },
+    log:   'something reorganizes inside. efficiency compounds.',
+  },
+  {
+    id:    'bloom',
+    label: 'bloom expansion',
+    sub:   'the colony spreads — +0.25 oxygen/s',
+    cost:  { glucose: 700, co2: 38 },
+    show:  () => s.bought.has('thylakoid'),
+    buy()  { s.oxygenRate += 0.25; },
+    log:   'the bloom reaches further than any colony before it',
+  },
+  {
+    id:    'stromatolite',
+    label: 'stromatolite formation',
+    sub:   'layered mineral structure — 2× oxygen output',
+    cost:  { glucose: 1100, co2: 65 },
+    show:  () => s.bought.has('bloom') && s.oxygen >= 15,
+    buy()  { s.oxygenMulti *= 2; },
+    log:   'something ancient begins to calcify. the structure will outlast the organism.',
+  },
+  {
+    id:    'fixation2',
+    label: 'dense carbon fixation',
+    sub:   'maximum CO₂ throughput — +0.3 glucose/s',
+    cost:  { glucose: 1800, co2: 100 },
+    show:  () => s.bought.has('stromatolite') && s.oxygen >= 30,
+    buy()  { s.glucoseRate += 0.3; },
+    log:   null,
+  },
+  {
+    id:    'tipping',
+    label: 'atmospheric tipping point',
+    sub:   'the accumulation becomes self-reinforcing — 2× oxygen rate',
+    cost:  { glucose: 3500, co2: 160 },
+    show:  () => s.bought.has('fixation2') && s.oxygen >= 55,
+    buy()  { s.oxygenMulti *= 2; },
+    log:   'the balance tips. what was atmospheric trace becomes atmospheric fact.',
+  },
+];
+
+// ─── Milestones ───────────────────────────────────────────────────────────────
+
+const MILESTONES = [
+  {
+    key: 'first_o2',
+    cond: () => s.oxygen >= 0.5,
+    msg:  'something enters the atmosphere for the first time',
+  },
+  {
+    key: 'o2_5',
+    cond: () => s.oxygen >= 5,
+    msg:  'the old chemistry begins to notice',
+  },
+  {
+    key: 'o2_10',
+    cond: () => s.oxygen >= 10,
+    msg:  'the archaea in the deep substrate feel it. they do not survive it.',
+  },
+  {
+    key: 'o2_25',
+    cond: () => s.oxygen >= 25,
+    msg:  'the atmosphere thickens with something new. the old world is changing.',
+  },
+  {
+    key: 'o2_50',
+    cond: () => s.oxygen >= 50,
+    msg:  'half the atmosphere has been remade by exhaust. the old world is poisoned.',
+  },
+  {
+    key: 'o2_75',
+    cond: () => s.oxygen >= 75,
+    msg:  'the old world is nearly gone. the new world is nearly here.',
+  },
+  {
+    key: 'o2_90',
+    cond: () => s.oxygen >= 90,
+    msg:  'the tipping point approaches. there is no going back from this.',
+  },
+];
+
+// ─── Dissolution ──────────────────────────────────────────────────────────────
+
+const DISSOLVE_LINES = [
+  'the oxygen accumulates past the threshold.',
+  'the chemistry of the world is not what it was.',
+  'what breathed before cannot breathe now.',
+  'what could not breathe before now can.',
+  'the cyanobacterium does not know what it has done.',
+  'it simply continues.',
+];
+
+const DISSOLVED_ECHO = 'cyano — the light changed everything';
+
+// ─── Tick ─────────────────────────────────────────────────────────────────────
+
+let lastTick = performance.now();
+
+function tick() {
+  if (s.phase !== 'play') return;
+
+  const now = performance.now();
+  const dt  = Math.min((now - lastTick) / 1000, 0.5);
+  lastTick  = now;
+
+  s.light   += s.lightRate * dt;
+  s.co2     += s.co2Rate   * dt;
+  s.glucose += s.glucoseRate * s.glucoseMulti * dt;
+  s.oxygen  += s.oxygenRate  * s.oxygenMulti  * dt;
+  s.oxygen   = Math.min(s.oxygen, WIN_OXYGEN);
+
+  checkMilestones();
+  checkVisibility();
+
+  if (s.oxygen >= WIN_OXYGEN) {
+    triggerDissolution();
+    return;
+  }
+
+  render();
+  setTimeout(tick, TICK_MS);
+}
+
+// ─── Milestones ───────────────────────────────────────────────────────────────
+
+function checkMilestones() {
+  for (const m of MILESTONES) {
+    if (!s.loggedMilestones.has(m.key) && m.cond()) {
+      s.loggedMilestones.add(m.key);
+      log(m.msg);
+    }
+  }
+}
+
+// ─── Upgrade visibility ───────────────────────────────────────────────────────
+
+function checkVisibility() {
+  for (const u of UPGRADES) {
+    if (!s.bought.has(u.id) && !s.visible.has(u.id) && u.show()) {
+      s.visible.add(u.id);
+      mountUpgrade(u);
+    }
+  }
+}
+
+function mountUpgrade(u) {
+  const btn = document.createElement('button');
+  btn.className = 'upgrade-btn';
+  btn.id = 'upg-' + u.id;
+
+  const costStr = Object.entries(u.cost).map(([r, v]) => `${v} ${r}`).join(' · ');
+  btn.innerHTML = `${u.label}<span class="btn-sub">${costStr} — ${u.sub}</span>`;
+
+  btn.addEventListener('click', () => {
+    if (s.bought.has(u.id) || !canAfford(u.cost)) return;
+    spend(u.cost);
+    s.bought.add(u.id);
+    u.buy();
+    btn.remove();
+    checkVisibility();
+    if (u.log) log(u.log);
+    render();
+  });
+
+  document.getElementById('upgrades').appendChild(btn);
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+
+function fmt(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e4) return (n / 1e3).toFixed(1) + 'k';
+  return n.toFixed(1);
+}
+
+function fmtRate(n) {
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '/s';
+}
+
+function render() {
+  document.getElementById('val-light').textContent   = fmt(s.light);
+  document.getElementById('rate-light').textContent  = fmtRate(s.lightRate);
+
+  document.getElementById('val-glucose').textContent  = fmt(s.glucose);
+  const gRate = s.glucoseRate * s.glucoseMulti;
+  document.getElementById('rate-glucose').textContent = fmtRate(gRate);
+
+  if (s.co2Rate > 0) {
+    document.getElementById('val-co2').textContent   = fmt(s.co2);
+    document.getElementById('rate-co2').textContent  = fmtRate(s.co2Rate);
+  }
+
+  const pct = Math.min(s.oxygen / WIN_OXYGEN, 1);
+  document.getElementById('oxygen-val').textContent = fmt(s.oxygen) + ' / 100';
+  document.getElementById('bar-fill').style.width   = (pct * 100).toFixed(2) + '%';
+
+  let stage = 'anoxic world';
+  if      (pct >= 0.90) stage = 'great oxygenation event';
+  else if (pct >= 0.75) stage = 'atmosphere changing';
+  else if (pct >= 0.50) stage = 'old world dying';
+  else if (pct >= 0.25) stage = 'oxygen rising';
+  else if (pct >= 0.05) stage = 'trace amounts';
+  document.getElementById('stage-label').textContent = stage;
+
+  const oRate = s.oxygenRate * s.oxygenMulti;
+  document.getElementById('o2-rate-label').textContent = oRate > 0 ? fmtRate(oRate) : '';
+
+  document.getElementById('btn-photosynthesize').disabled = s.light < 1;
+
+  for (const u of UPGRADES) {
+    if (s.bought.has(u.id) || !s.visible.has(u.id)) continue;
+    const btn = document.getElementById('upg-' + u.id);
+    if (btn) btn.disabled = !canAfford(u.cost);
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function canAfford(cost) {
+  for (const [r, v] of Object.entries(cost)) {
+    if ((s[r] ?? 0) < v) return false;
+  }
+  return true;
+}
+
+function spend(cost) {
+  for (const [r, v] of Object.entries(cost)) { s[r] -= v; }
+}
+
+// ─── Log ──────────────────────────────────────────────────────────────────────
+
+function log(msg) {
+  const logEl = document.getElementById('log');
+  const p = document.createElement('p');
+  p.textContent = msg;
+  p.className = 'fresh';
+  logEl.prepend(p);
+  setTimeout(() => p.classList.remove('fresh'), 3500);
+  while (logEl.children.length > 14) logEl.removeChild(logEl.lastChild);
+}
+
+// ─── Dissolution ──────────────────────────────────────────────────────────────
+
+async function triggerDissolution() {
+  s.phase = 'dissolving';
+
+  // Save carry state for layer iii
+  try {
+    localStorage.setItem('mandala_carry_l2', JSON.stringify({
+      oxygen_total:   Math.round(s.oxygen * 10) / 10,
+      o2_fraction:    1.0,
+      glucose_peak:   Math.round(s.glucose * 10) / 10,
+    }));
+  } catch {}
+
+  const overlay = document.getElementById('dissolve');
+  const linesEl = document.getElementById('dissolve-lines');
+  const echoEl  = document.getElementById('dissolve-echo');
+  const ctaEl   = document.getElementById('dissolve-cta');
+  overlay.classList.add('active');
+
+  for (const line of DISSOLVE_LINES) {
+    await delay(1600);
+    const p = document.createElement('p');
+    p.textContent = line;
+    linesEl.appendChild(p);
+    void p.offsetWidth;
+    p.classList.add('show');
+  }
+
+  await delay(1800);
+  echoEl.textContent = DISSOLVED_ECHO;
+  void echoEl.offsetWidth;
+  echoEl.classList.add('show');
+
+  await delay(2000);
+  ctaEl.classList.add('show');
+
+  ctaEl.addEventListener('click', () => {
+    linesEl.innerHTML   = '';
+    echoEl.textContent  = '';
+    ctaEl.style.display = 'none';
+    const p = document.createElement('p');
+    p.textContent = 'layer iii — fungus — not yet built';
+    p.style.opacity = '1';
+    p.style.color   = 'var(--dim)';
+    linesEl.appendChild(p);
+  }, { once: true });
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-photosynthesize').addEventListener('click', () => {
+  if (s.light < 1 || s.phase !== 'play') return;
+  s.light   -= 1;
+  s.glucose += 0.4;
+  s.oxygen  += 0.1;
+  if (!s.loggedMilestones.has('first_click')) {
+    s.loggedMilestones.add('first_click');
+    log('light becomes something else');
+  }
+  render();
+});
+
+// Show carry bonus if present
+if (subBonus > 0) {
+  const notice = document.getElementById('carry-notice');
+  notice.style.display = 'block';
+  notice.textContent   = `substrate conditioned by archaea — light rate +${(subBonus).toFixed(2)}/s`;
+}
+
+log('the surface is reached. something absorbs light for the first time.');
+lastTick = performance.now();
+setTimeout(tick, TICK_MS);
+</script>
+</body>
+</html>

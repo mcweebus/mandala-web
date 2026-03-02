@@ -8,14 +8,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:      #0d0d0d;
-  --text:    #d6d3c6;
-  --dim:     #8a8880;
-  --dimmer:  #5a5a54;
-  --accent:  #8aba8a;
-  --amber:   #9a7a50;
-  --number:  #e4d4a4;
-  --border:  #252522;
+  --bg:      #ffffff;
+  --text:    #111111;
+  --dim:     #666660;
+  --dimmer:  #999994;
+  --accent:  #3a7a3a;
+  --amber:   #7a5a20;
+  --number:  #222222;
+  --border:  #ddddda;
 }
 
 body {
@@ -629,6 +629,15 @@ function log(msg) {
 async function triggerDissolution() {
   s.phase = 'dissolving';
 
+  // Save carry state for layer ii
+  try {
+    localStorage.setItem('mandala_carry_l1', JSON.stringify({
+      substrate_fraction: Math.min(s.substrate / WIN_SUBSTRATE, 1),
+      biomass_peak:       Math.round(s.biomass * 10) / 10,
+      iron_peak:          Math.round(s.iron * 10) / 10,
+    }));
+  } catch {}
+
   const overlay   = document.getElementById('dissolve');
   const linesEl   = document.getElementById('dissolve-lines');
   const echoEl    = document.getElementById('dissolve-echo');
@@ -653,15 +662,7 @@ async function triggerDissolution() {
   ctaEl.classList.add('show');
 
   ctaEl.addEventListener('click', () => {
-    linesEl.innerHTML   = '';
-    echoEl.textContent  = '';
-    ctaEl.style.display = 'none';
-
-    const p = document.createElement('p');
-    p.textContent = 'layer ii — cyanobacteria — not yet built';
-    p.style.opacity = '1';
-    p.style.color = 'var(--dim)';
-    linesEl.appendChild(p);
+    window.location.href = 'layer-ii.html';
   }, { once: true });
 }
 
