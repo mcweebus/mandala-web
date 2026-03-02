@@ -436,7 +436,7 @@ body {
 </div>
 
 <!-- Legacy (full width) -->
-<div id="legacy-panel">
+<div id="legacy-panel" style="display:none">
   <div class="section-label">substrate legacy — what the next stage inherits</div>
 
   <div class="legacy-row">
@@ -831,6 +831,14 @@ const MILESTONES = [
     msg:  'nitrogen fixed for the first time. the substrate remembers.',
   },
   {
+    key:  'legacy_reveal',
+    cond: () => computeScore() > 0,
+    msg:  'the substrate begins to record what is done here',
+    onTrigger: () => {
+      document.getElementById('legacy-panel').style.display = '';
+    },
+  },
+  {
     key:  'score_15',
     cond: () => computeScore() >= 15,
     msg:  'the substrate begins to hold what it is given',
@@ -1037,6 +1045,7 @@ function checkMilestones(score) {
     if (!s.loggedMilestones.has(m.key) && m.cond()) {
       s.loggedMilestones.add(m.key);
       addLog(m.msg);
+      if (m.onTrigger) m.onTrigger();
     }
   }
 }
