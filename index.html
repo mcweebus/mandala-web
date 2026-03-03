@@ -423,7 +423,12 @@ body {
   <div>
 
     <div id="pathways-panel">
-      <div class="section-label">metabolic pathways</div>
+      <div class="section-label" style="display:flex; justify-content:space-between; align-items:baseline;">
+        <span>metabolic pathways</span>
+        <span id="mp-display" style="font-size:11px; letter-spacing:0.1em;">
+          <span id="mp-used">3</span> / <span id="mp-total">10</span> MP
+        </span>
+      </div>
       <div id="pathways-list"></div>
     </div>
 
@@ -629,6 +634,8 @@ const s = {
     phosphate_mob: false, mg_weather: false,
   },
 
+  totalMP: 10,
+
   bought:           new Set(),
   visibleUpgrades:  new Set(),
   loggedMilestones: new Set(),
@@ -710,6 +717,18 @@ const UPGRADES = [
     log:   'the buildup finds a use',
   },
   {
+    id:    'mp_expand_1',
+    label: 'metabolic expansion',
+    sub:   '+4 metabolic points — the colony can sustain more at once',
+    cost:  { biomass: 100 },
+    show:  () => {
+      const used = Object.values(s.pri).reduce((a, b) => a + b, 0);
+      return used >= s.totalMP - 1 && s.bought.has('iron_red_unlock');
+    },
+    buy:   () => { s.totalMP += 4; },
+    log:   'the colony grows. more is possible.',
+  },
+  {
     id:    'methano_unlock',
     label: 'methanogenic complex',
     sub:   'unlocks methanogenesis — warms the atmosphere, feeds the colony',
@@ -752,6 +771,18 @@ const UPGRADES = [
     cost:  { biomass: 160 },
     show:  () => s.bought.has('nitrogen_access'),
     buy:   () => unlockPath('acetogenesis'),
+    log:   null,
+  },
+  {
+    id:    'mp_expand_2',
+    label: 'metabolic expansion II',
+    sub:   '+4 metabolic points',
+    cost:  { biomass: 280 },
+    show:  () => {
+      const used = Object.values(s.pri).reduce((a, b) => a + b, 0);
+      return used >= s.totalMP - 1 && s.bought.has('nitrogen_fix_unlock');
+    },
+    buy:   () => { s.totalMP += 4; },
     log:   null,
   },
   {
@@ -1126,6 +1157,8 @@ document.addEventListener('click', e => {
   if (!btn) return;
   const id  = btn.dataset.id;
   const dir = parseInt(btn.dataset.dir);
+  const usedMP = Object.values(s.pri).reduce((a, b) => a + b, 0);
+  if (dir > 0 && usedMP >= s.totalMP) return; // budget exhausted
   s.pri[id] = Math.max(0, Math.min(5, s.pri[id] + dir));
   document.getElementById('pri-' + id).textContent = s.pri[id];
 });
@@ -1281,6 +1314,15 @@ function render(score) {
   const scorePct = Math.min(score / CFG.WIN_SCORE, 1) * 100;
   setW('score-bar-fill', scorePct);
   set('score-val', score.toFixed(1) + ' / ' + CFG.WIN_SCORE);
+
+  // MP budget display
+  const usedMP = Object.values(s.pri).reduce((a, b) => a + b, 0);
+  set('mp-used', usedMP);
+  set('mp-total', s.totalMP);
+  const mpFull = usedMP >= s.totalMP;
+  document.querySelectorAll('.pri-btn[data-dir="1"]').forEach(btn => {
+    btn.disabled = mpFull;
+  });
 
   // Upgrade affordability
   for (const u of UPGRADES) {
