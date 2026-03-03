@@ -679,7 +679,7 @@ const UPGRADES = [
     cost:  { biomass: 10 },
     show:  () => s.biomass >= 3,
     buy:   () => { s.rH += 0.25; },
-    log:   'the vents run deeper. hydrogen flows faster.',
+    log:   'more H/s means H-consuming pathways run at full rate more often. useful before nitrogen fixation comes online.',
   },
   {
     id:    'sulfur_vent',
@@ -688,7 +688,7 @@ const UPGRADES = [
     cost:  { biomass: 18 },
     show:  () => s.biomass >= 8,
     buy:   () => { s.rS += 0.18; },
-    log:   null,
+    log:   'more S/s keeps sulfur reduction running without input starvation.',
   },
   {
     id:    'carbon_access',
@@ -697,7 +697,7 @@ const UPGRADES = [
     cost:  { biomass: 24 },
     show:  () => s.biomass >= 12,
     buy:   () => { s.rC += 0.20; },
-    log:   null,
+    log:   'carbon feeds methanogenesis and acetogenesis. both are unlockable mid-game.',
   },
   {
     id:    'iron_weather',
@@ -706,7 +706,7 @@ const UPGRADES = [
     cost:  { biomass: 36 },
     show:  () => s.bought.has('carbon_access'),
     buy:   () => { s.rFe = 0.12; showElem('Fe'); },
-    log:   'iron enters the chemistry',
+    log:   'iron is needed for iron reduction (Fe²⁺, 20% of score), sulfide oxidation (H₂S control), and later for nitrogenase.',
   },
   {
     id:    'iron_red_unlock',
@@ -715,7 +715,7 @@ const UPGRADES = [
     cost:  { biomass: 55, Fe: 5 },
     show:  () => s.bought.has('iron_weather') && s.Fe >= 3,
     buy:   () => unlockPath('iron_red'),
-    log:   'a new pathway opens. the iron cycles.',
+    log:   'iron reduction produces Fe²⁺ — 20% of substrate score. it competes with sulfur reduction for H. balance priorities.',
   },
   {
     id:    'serp2',
@@ -724,7 +724,7 @@ const UPGRADES = [
     cost:  { biomass: 75 },
     show:  () => s.bought.has('iron_weather'),
     buy:   () => { s.rH += 0.30; },
-    log:   null,
+    log:   'H production is the primary bottleneck for late-game pathways. buy this before unlocking methanogenesis.',
   },
   {
     id:    'sulfide_ox_unlock',
@@ -733,7 +733,7 @@ const UPGRADES = [
     cost:  { biomass: 80 },
     show:  () => s.h2s >= 14,
     buy:   () => unlockPath('sulfide_ox'),
-    log:   'the buildup finds a use',
+    log:   'sulfide oxidation consumes H₂S and Fe, produces S. run it at priority 2–3 to keep H₂S below the ×0.85 penalty threshold.',
   },
   {
     id:    'mp_expand_1',
@@ -745,7 +745,7 @@ const UPGRADES = [
       return used >= s.totalMP - 1 && s.bought.has('iron_red_unlock');
     },
     buy:   () => { s.totalMP += 4; },
-    log:   'the colony grows. more is possible.',
+    log:   '+4 MP. you can now split budget across more pathways simultaneously. consider activating iron reduction if H supports it.',
   },
   {
     id:    'methano_unlock',
@@ -754,7 +754,7 @@ const UPGRADES = [
     cost:  { biomass: 95 },
     show:  () => s.bought.has('serp2') && s.C >= 8,
     buy:   () => unlockPath('methanogenesis'),
-    log:   'the colony begins to exhale. something changes in the atmosphere.',
+    log:   'methanogenesis converts CO₂ and H into CH₄. aim for CH₄ 40–70 to hold the ×1.10 rate bonus. H-intensive — watch your budget.',
   },
   {
     id:    'sulfur_vent2',
@@ -772,7 +772,7 @@ const UPGRADES = [
     cost:  { biomass: 130 },
     show:  () => s.bought.has('methano_unlock'),
     buy:   () => { s.rN = 0.10; showElem('N'); },
-    log:   'the triple bond is reachable now',
+    log:   'nitrogen feeds fixation. fixation produces NH₃ — 40% of the substrate score. H-intensive; ensure H production keeps pace.',
   },
   {
     id:    'nitrogen_fix_unlock',
@@ -781,7 +781,7 @@ const UPGRADES = [
     cost:  { biomass: 180, Fe: 22 },
     show:  () => s.bought.has('nitrogen_access') && s.N >= 4,
     buy:   () => unlockPath('nitrogen_fix'),
-    log:   'something begins to fix. the ground shifts.',
+    log:   'nitrogen fixation produces NH₃ only — no biomass. allocate significant MP here. it needs N, H, and Fe to run at full rate.',
   },
   {
     id:    'acetogenesis_unlock',
@@ -790,7 +790,7 @@ const UPGRADES = [
     cost:  { biomass: 160 },
     show:  () => s.bought.has('nitrogen_access'),
     buy:   () => unlockPath('acetogenesis'),
-    log:   null,
+    log:   'acetogenesis produces organic carbon (5% of score) and biomass. lower priority than nitrogen fixation, but worth running.',
   },
   {
     id:    'mp_expand_2',
@@ -802,7 +802,7 @@ const UPGRADES = [
       return used >= s.totalMP - 1 && s.bought.has('nitrogen_fix_unlock');
     },
     buy:   () => { s.totalMP += 4; },
-    log:   null,
+    log:   '+4 MP. budget now supports nitrogen fixation, phosphate mobilization, and magnesium weathering running simultaneously.',
   },
   {
     id:    'serp3',
@@ -811,7 +811,7 @@ const UPGRADES = [
     cost:  { biomass: 260 },
     show:  () => s.bought.has('nitrogen_fix_unlock'),
     buy:   () => { s.rH += 0.40; },
-    log:   null,
+    log:   'high H rate lets nitrogen fixation run at maximum priority without starving the other H-consuming pathways.',
   },
   {
     id:    'phosphate_weather',
@@ -820,7 +820,7 @@ const UPGRADES = [
     cost:  { biomass: 320 },
     show:  () => s.bought.has('nitrogen_fix_unlock'),
     buy:   () => { s.rP = 0.08; showElem('P'); unlockPath('phosphate_mob'); },
-    log:   'the mineral yields what was locked inside',
+    log:   'phosphate mobilization produces PO₄ — 25% of score. it costs biomass to run. keep net biomass production ahead of pathway costs.',
   },
   {
     id:    'dense_nitrogenase',
@@ -829,7 +829,7 @@ const UPGRADES = [
     cost:  { biomass: 380, Fe: 45 },
     show:  () => s.bought.has('nitrogen_fix_unlock') && s.nh3 >= 8,
     buy:   () => { PATHWAYS.find(p => p.id === 'nitrogen_fix').outputs.nh3 *= 1.6; },
-    log:   'the fixation compounds',
+    log:   'NH₃ output ×1.6. with high nitrogen fixation priority this now dominates score growth. keep H₂S below 30 to protect the rate.',
   },
   {
     id:    'mg_weather_unlock',
@@ -838,7 +838,7 @@ const UPGRADES = [
     cost:  { biomass: 400 },
     show:  () => s.bought.has('phosphate_weather'),
     buy:   () => { s.rMg = 0.06; showElem('Mg'); unlockPath('mg_weather'); },
-    log:   'the substrate yields magnesium',
+    log:   'magnesium weathering produces Mg²⁺ — 10% of score. low H cost. add 2–3 priority when the budget allows.',
   },
 ];
 
@@ -849,7 +849,7 @@ const MILESTONES = [
   {
     key:  'sr_activated',
     cond: () => s.pri.sulfur_red > 0,
-    msg:  'hydrogen and sulfur, consumed. something is produced.',
+    msg:  'sulfur reduction consumes H and S, produces biomass and H₂S. H₂S accumulates and will penalize all rates if left unchecked.',
     onTrigger: () => {
       reveal('elements-label');
       reveal('row-H');
@@ -859,13 +859,13 @@ const MILESTONES = [
   {
     key:  'biomass_visible',
     cond: () => s.biomass >= 0.8,
-    msg:  'biomass — chemical energy, stored. it will fund what comes next.',
+    msg:  'biomass is your currency for upgrades. pathways that run phosphate and magnesium also consume it — keep net production positive.',
     onTrigger: () => { reveal('row-biomass'); },
   },
   {
     key:  'h2s_visible',
     cond: () => s.h2s >= 0.4,
-    msg:  'hydrogen sulfide accumulates. a byproduct of the work.',
+    msg:  'H₂S penalizes all biological rates: ×0.85 above 30, ×0.70 above 60. sulfide oxidation (unlockable later) converts it back to sulfur.',
     onTrigger: () => {
       reveal('atmosphere-panel');
     },
@@ -873,55 +873,56 @@ const MILESTONES = [
   {
     key:  'temp_visible',
     cond: () => s.ch4 >= 10,
-    msg:  'temperature. the atmosphere holds warmth differently now.',
+    msg:  'methane warms the atmosphere. frigid (below 15 CH₄) = ×0.82 rates. optimal (40–70) = full speed. above 85 destabilizes.',
     onTrigger: () => { reveal('temp-row'); },
   },
-  // ── Narrative ─────────────────────────────────────────────────────────────
+  // ── Actionable warnings ───────────────────────────────────────────────────
   {
     key:  'h_escape_warning',
     cond: () => s.H >= CFG.H_CAP - 2,
-    msg:  'hydrogen approaches the threshold. above it, the atmosphere takes what the rock made.',
+    msg:  'hydrogen above 48 escapes to space. invest in more H-consuming pathways, or buy serpentinization upgrades to keep production ahead.',
   },
   {
     key:  'h2s_rising',
     cond: () => s.h2s >= 12,
-    msg:  'hydrogen sulfide builds in the rock pores. if left unchecked, the chemistry suffers.',
+    msg:  'H₂S is approaching the ×0.85 penalty threshold. lower sulfur reduction priority, or unlock sulfide oxidation to recycle it.',
   },
   {
     key:  'ch4_warming',
     cond: () => s.ch4 >= 40,
-    msg:  'the atmosphere warms. the chemistry accelerates.',
+    msg:  'atmosphere is warm — biological rates ×1.10. keep CH₄ between 40 and 85 to hold the bonus.',
   },
   {
     key:  'ch4_unstable',
     cond: () => s.ch4 >= 85,
-    msg:  'the warming becomes unstable. the colony strains against itself.',
+    msg:  'CH₄ above 85 drops rates to ×0.82. lower methanogenesis priority or wait for atmospheric decay to bring it back into range.',
   },
+  // ── Legacy education ──────────────────────────────────────────────────────
   {
     key:  'first_nh3',
     cond: () => s.nh3 >= 1,
-    msg:  'nitrogen fixed for the first time. the substrate remembers.',
+    msg:  'ammonia (NH₃) is 40% of the substrate score — the largest single contributor. prioritize nitrogen fixation throughout the run.',
   },
   {
     key:  'legacy_reveal',
     cond: () => computeScore() > 0,
-    msg:  'the substrate begins to record what is done here',
+    msg:  'substrate score: NH₃ 40% · PO₄ 25% · Fe²⁺ 20% · Mg²⁺ 10% · organic C 5%. reach 60 to dissolve.',
     onTrigger: () => { reveal('legacy-panel'); },
   },
   {
     key:  'score_15',
     cond: () => computeScore() >= 15,
-    msg:  'the substrate begins to hold what it is given',
+    msg:  'phosphate and iron are 45% of the score combined. their pathways both consume biomass — keep net biomass production positive.',
   },
   {
     key:  'score_35',
     cond: () => computeScore() >= 35,
-    msg:  'what comes next will inherit this. the conditioning is real.',
+    msg:  'late-game: metabolic points must cover nitrogen fixation, phosphate mobilization, and magnesium weathering simultaneously. expand your budget.',
   },
   {
     key:  'score_50',
     cond: () => computeScore() >= 50,
-    msg:  'nearly ready. nearly.',
+    msg:  'score is high. keep all five legacy pathways active and H₂S below 30 to close the remaining gap.',
   },
 ];
 
@@ -1214,14 +1215,14 @@ function unlockPath(id) {
   const unlockedCount = Object.values(s.unlocked).filter(Boolean).length;
   if (unlockedCount === 2) {
     reveal('mp-display');
-    addLog('metabolic points are finite. what is spent here cannot be spent elsewhere.');
+    addLog('metabolic points are shared across all pathways. the sum of all priorities cannot exceed your budget.');
   }
 
   // Reveal C row and CH4 meter when methanogenesis unlocks
   if (id === 'methanogenesis') {
     reveal('row-C');
     reveal('atmo-ch4-row');
-    addLog('carbon becomes relevant. methane is the exhaust.');
+    addLog('CO₂ feeds methanogenesis. the CH₄ it produces warms the atmosphere — improving all biological rates.');
   }
 }
 
@@ -1537,8 +1538,8 @@ function delay(ms) {
 // Mount the starting pathway
 mountPathway('sulfur_red');
 
-setTimeout(() => addLog('you are in the substrate. chemistry is all there is.'), 800);
-setTimeout(() => addLog('sulfur and hydrogen seep from the rock. they want to combine.'), 4500);
+setTimeout(() => addLog('raise sulfur reduction priority to begin producing biomass.'), 800);
+setTimeout(() => addLog('biomass funds upgrades. H and S are consumed. H₂S will build as a byproduct.'), 4500);
 
 lastTick = performance.now();
 setTimeout(tick, CFG.TICK_MS);
