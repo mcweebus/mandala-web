@@ -501,22 +501,30 @@ body {
 
 <script>
 // ─── Config ───────────────────────────────────────────────────────────────────
+// Central constants. Tune these to adjust game pacing and difficulty.
 
 const CFG = {
-  WIN_SCORE:  60,
-  TICK_MS:    80,
-  H_CAP:      48,       // H above this bleeds to space
-  H_ESC_RATE: 0.06,     // per unit above cap per second
-  CH4_DECAY:  0.012,    // atmospheric absorption
-  H2S_DECAY:  0.005,    // natural dilution
+  WIN_SCORE:  60,    // substrate conditioning score required to trigger dissolution
+  TICK_MS:    80,    // ms between game ticks (~12.5 ticks/sec at normal speed)
 
-  // Legacy: each fills to cap for full weight contribution
+  // Hydrogen economy
+  H_CAP:      48,    // H above this threshold bleeds to space (Jeans escape)
+  H_ESC_RATE: 0.06,  // rate of escape per unit of H above the cap, per second
+
+  // Atmospheric decay — slow natural loss keeps values from accumulating forever
+  CH4_DECAY:  0.012, // methane absorbed by photochemical reactions
+  H2S_DECAY:  0.005, // hydrogen sulfide diluted by crustal chemistry
+
+  // Legacy resources: what layer i conditions for layer ii (cyanobacteria).
+  // Each key must exactly match a property on the state object (s).
+  // cap: the value at which this resource contributes its full weight to the score.
+  // weight: percentage contribution to the substrate conditioning score (must sum to 100).
   LEGACY: {
-    nh3:  { cap: 80, weight: 40 },
-    po4:  { cap: 80, weight: 25 },
-    fe2:  { cap: 80, weight: 20 },
-    mg2:  { cap: 80, weight: 10 },
-    orgC: { cap: 80, weight:  5 },
+    nh3:  { cap: 80, weight: 40 }, // ammonia — cyanobacteria need it to synthesize chlorophyll
+    po4:  { cap: 80, weight: 25 }, // phosphate — essential for ATP and cell membranes
+    fe2:  { cap: 80, weight: 20 }, // bioavailable iron — cofactor in photosynthetic electron chain
+    mg2:  { cap: 80, weight: 10 }, // magnesium — the central atom of chlorophyll
+    orgC: { cap: 80, weight:  5 }, // organic carbon — first soil-like material in substrate
   },
 };
 
@@ -605,53 +613,63 @@ const PATHWAYS = [
 const ATMO_KEYS = new Set(['ch4', 'h2s']);
 
 // ─── State ────────────────────────────────────────────────────────────────────
+// Single mutable object. All game state lives here so tick() and render() share
+// a single source of truth without passing arguments everywhere.
 
 const s = {
-  // Elements
+  // Raw elements (accumulate from base rates; consumed by pathways)
   H: 0, S: 0, Fe: 0, C: 0, N: 0, P: 0, Mg: 0,
   biomass: 0,
 
-  // Atmosphere
+  // Atmospheric gases (not bio-efficieny-scaled; have their own decay)
   ch4: 0, h2s: 0,
 
-  // Legacy
+  // Legacy resources — what layer i conditions for layer ii
   nh3: 0, po4: 0, fe2: 0, mg2: 0, orgC: 0,
 
-  // Element production rates
+  // Element production rates (units/sec); modified by upgrades
   rH: 0.35, rS: 0.20, rC: 0.25, rFe: 0, rN: 0, rP: 0, rMg: 0,
 
-  // Pathway priorities (0 = off, 1–5)
+  // Pathway priorities (0 = off/idle, 1–5); controls MP allocation
   pri: {
     sulfur_red: 3, iron_red: 0, methanogenesis: 0,
     nitrogen_fix: 0, acetogenesis: 0, sulfide_ox: 0,
     phosphate_mob: 0, mg_weather: 0,
   },
 
-  // Unlocked flags
+  // Which pathways the player has unlocked via upgrades
   unlocked: {
     sulfur_red: true, iron_red: false, methanogenesis: false,
     nitrogen_fix: false, acetogenesis: false, sulfide_ox: false,
     phosphate_mob: false, mg_weather: false,
   },
 
-  totalMP: 10,
-  debugSpeed: false,
+  totalMP: 10,      // metabolic points budget; expanded by upgrade purchases
+  debugSpeed: false, // 10× dt when toggled by cheat code
 
-  bought:           new Set(),
-  visibleUpgrades:  new Set(),
-  loggedMilestones: new Set(),
+  bought:           new Set(), // upgrade IDs that have been purchased
+  visibleUpgrades:  new Set(), // upgrade IDs that are shown in the UI (but may not be affordable yet)
+  loggedMilestones: new Set(), // milestone keys that have already fired
 
-  phase: 'play',
+  phase: 'play', // 'play' | 'dissolving'
 
-  // Computed per tick
-  _activities: {},
-  _tempMult:   0.82,
-  _h2sMult:    1.00,
-  _tempCls:    'cold',
-  _h2sCls:     'ok',
+  // _ prefix = computed each tick, cached for render(); never set externally
+  _activities: {},   // { pathId: { level, hStarved, inputStarved } }
+  _tempMult:   0.82, // bioEff temperature component
+  _h2sMult:    1.00, // bioEff toxicity component
+  _tempCls:    'cold', // CSS class for CH4 bar coloring
+  _h2sCls:     'ok',  // CSS class for H2S bar coloring
 };
 
 // ─── Upgrades ─────────────────────────────────────────────────────────────────
+// Upgrades are gated by conditions (show) and removed from the list after
+// purchase. The unlock chain roughly follows:
+//   biomass → iron_weather → iron_red_unlock → serp2 → methano_unlock
+//                                             ↘ sulfide_ox_unlock
+//   methano_unlock → nitrogen_access → nitrogen_fix_unlock → phosphate_weather
+//                                    ↘ acetogenesis_unlock      ↘ mg_weather_unlock
+// Two metabolic-expansion upgrades (mp_expand_1/2) appear when the budget is
+// nearly full, giving the player room to run more pathways simultaneously.
 
 const UPGRADES = [
   {
@@ -908,6 +926,8 @@ const MILESTONES = [
 ];
 
 // ─── Dissolution text ─────────────────────────────────────────────────────────
+// Lines appear one at a time in the overlay, 1.6s apart, after the win
+// condition is met. Tone: quiet, non-triumphant, ecological.
 
 const DISSOLVE_LINES = [
   'the colony reaches a threshold it cannot cross back over.',
@@ -919,6 +939,9 @@ const DISSOLVE_LINES = [
 ];
 
 // ─── Tick ─────────────────────────────────────────────────────────────────────
+// Runs every CFG.TICK_MS ms via setTimeout (not setInterval, to avoid drift).
+// dt is capped at 0.5s to prevent huge jumps after tab backgrounding.
+// debugSpeed multiplies dt by 10 for rapid playtesting.
 
 let lastTick = performance.now();
 
@@ -1012,17 +1035,24 @@ function tick() {
 // ─── Activity computation ─────────────────────────────────────────────────────
 // Returns { pathId: { level, hStarved, inputStarved } }
 // level = actual scale of activity this tick (0 to priority/3, typically 0–5/3)
+//
+// H is a shared contested resource. All H-consuming pathways compete for the
+// same H pool. hScale = min(1, available_H / total_H_wanted) is applied
+// uniformly, so each pathway gets a proportional share rather than the highest-
+// priority pathway draining the pool entirely before others run.
+// hStarved = true when hScale < 0.85 (shown in UI as "H-limited").
 
 function computeActivities(dt) {
   const result = {};
 
-  // H-consuming pathways: distribute H by weighted priority
+  // H-consuming pathways: distribute H proportionally by priority weight
   const hPaths = PATHWAYS.filter(p => s.unlocked[p.id] && p.hPerUnit > 0 && s.pri[p.id] > 0);
 
   let totalHWanted = 0;
   for (const p of hPaths) {
     totalHWanted += p.hPerUnit * (s.pri[p.id] / 3) * dt;
   }
+  // hScale < 1 means all H-consuming pathways are throttled proportionally
   const hScale = totalHWanted > 0 ? Math.min(1, s.H / totalHWanted) : 0;
 
   for (const p of hPaths) {
@@ -1066,6 +1096,10 @@ function computeActivities(dt) {
 
 // ─── Environmental effects ────────────────────────────────────────────────────
 
+// tempBand: maps CH₄ level to a temperature multiplier on all biological output.
+// Archean Earth had a faint young sun (~70% modern luminosity), so without a
+// greenhouse gas the surface would be frozen. Methanogenesis is the player's
+// mechanism to warm the world. Over-warming (ch4 > 85) destabilises chemistry.
 function tempBand(ch4) {
   if (ch4 < 15) return { label: `frigid — biological rates ×0.82`, mult: 0.82, cls: 'cold'  };
   if (ch4 < 40) return { label: `cold — biological rates ×0.92`,   mult: 0.92, cls: 'cool'  };
@@ -1074,6 +1108,10 @@ function tempBand(ch4) {
   return               { label: `unstable — biological rates ×0.82`,mult: 0.82, cls: 'hot'   };
 }
 
+// h2sEffect: H₂S accumulates as a byproduct of sulfur reduction. At high
+// concentrations it inhibits enzyme function — even in sulfur-metabolising
+// organisms. The sulfide oxidation pathway (sulfide_ox) converts it back to S,
+// which is the player's tool for managing buildup.
 function h2sEffect(h2s) {
   if (h2s < 30) return { mult: 1.00, label: 'trace',    cls: 'ok'     };
   if (h2s < 60) return { mult: 0.85, label: 'elevated — rates ×0.85', cls: 'warn'   };
@@ -1081,6 +1119,10 @@ function h2sEffect(h2s) {
 }
 
 // ─── Score ────────────────────────────────────────────────────────────────────
+// Weighted sum of legacy resource fill fractions.
+// score = Σ (min(resource / cap, 1) × weight)  — max 100, win at CFG.WIN_SCORE.
+// Resources fill toward their individual cap; the weights reflect how important
+// each nutrient is for cyanobacteria in layer ii (nh3 highest at 40%).
 
 function computeScore() {
   let score = 0;
@@ -1091,6 +1133,9 @@ function computeScore() {
 }
 
 // ─── Milestones ───────────────────────────────────────────────────────────────
+// Each milestone fires exactly once. onTrigger callbacks are used for
+// progressive UI reveals (A Dark Room style). The milestone key is saved in
+// s.loggedMilestones so it doesn't re-fire if conditions are re-met.
 
 function checkMilestones(score) {
   for (const m of MILESTONES) {
@@ -1103,6 +1148,9 @@ function checkMilestones(score) {
 }
 
 // ─── Upgrade visibility ───────────────────────────────────────────────────────
+// Upgrades are polled each tick. When an upgrade's show() becomes true for
+// the first time, it's added to visibleUpgrades and mounted into the DOM.
+// Already-bought or already-visible upgrades are skipped.
 
 function checkUpgradeVisibility() {
   for (const u of UPGRADES) {
@@ -1114,6 +1162,8 @@ function checkUpgradeVisibility() {
 }
 
 function mountUpgrade(u) {
+  // Reveal the upgrades panel the first time any upgrade becomes visible.
+  // visibleUpgrades.size is checked after the add() above, so size === 1 = first.
   if (s.visibleUpgrades.size === 1) reveal('upgrades-panel');
 
   const btn = document.createElement('button');
@@ -1140,6 +1190,10 @@ function mountUpgrade(u) {
 // ─── Pathway mount ────────────────────────────────────────────────────────────
 
 // ─── Progressive reveal ───────────────────────────────────────────────────────
+// Elements are hidden at page load (display:none). reveal() fades them in over
+// 0.7s. The 20ms setTimeout before setting opacity = '1' gives the browser a
+// frame to register display:'' + opacity:0 before starting the CSS transition;
+// without this the transition is skipped entirely.
 
 function reveal(id) {
   const el = document.getElementById(id);
@@ -1171,6 +1225,9 @@ function unlockPath(id) {
   }
 }
 
+// mountPathway: builds the DOM card for a pathway and appends it to
+// #pathways-list. Called once per pathway: at init for sulfur_red, and via
+// unlockPath() for everything else.
 function mountPathway(id) {
   const p = PATHWAYS.find(p => p.id === id);
   if (!p) return;
@@ -1213,11 +1270,15 @@ document.addEventListener('click', e => {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// showElem: makes an element row visible by removing the 'hidden' CSS class.
+// Used for Fe, N, P, Mg rows which unlock via upgrades (not milestone reveal).
 function showElem(key) {
   const row = document.getElementById('row-' + key);
   if (row) row.classList.remove('hidden');
 }
 
+// canAfford / spend: upgrade cost handling. biomass is the common currency;
+// other elements are consumed directly from the element pool.
 function canAfford(cost) {
   for (const [res, val] of Object.entries(cost)) {
     const have = res === 'biomass' ? s.biomass : (s[res] ?? 0);
@@ -1233,28 +1294,35 @@ function spend(cost) {
   }
 }
 
+// fmt: compact number display. Keeps values readable as they grow large.
 function fmt(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
   if (n >= 1e4) return (n / 1e3).toFixed(1) + 'k';
   return n.toFixed(1);
 }
 
+// fmtRate: always shows sign; used for rate columns.
 function fmtRate(n) {
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '/s';
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
+// Pure DOM update — no state changes. Called at end of each tick.
 
+// set: update a text node by element ID.
 function set(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
 }
 
+// setW: set a progress bar width as a percentage.
 function setW(id, pct) {
   const el = document.getElementById(id);
   if (el) el.style.width = pct.toFixed(1) + '%';
 }
 
+// setClass: swap one semantic class on an element while preserving others.
+// The regex strips all known state classes before appending the new one.
 function setClass(id, cls) {
   const el = document.getElementById(id);
   if (el) el.className = el.className.replace(/\b(ok|cool|cold|warn|danger|hot|warm|bonus|penalty|active|limited|starved|idle)\b/g, '').trim() + ' ' + cls;
@@ -1381,6 +1449,9 @@ function render(score) {
 }
 
 // ─── Log ─────────────────────────────────────────────────────────────────────
+// Messages are prepended (newest at top). The 'fresh' class applies a brief
+// highlight animation; it's removed after 3.5s. Log is capped at 14 entries
+// to keep the page from growing unbounded.
 
 function addLog(msg) {
   const logEl = document.getElementById('log');
@@ -1393,6 +1464,10 @@ function addLog(msg) {
 }
 
 // ─── Dissolution ──────────────────────────────────────────────────────────────
+// Async so we can await delay() between dissolve lines without blocking the
+// main thread. Sets phase to 'dissolving' first so tick() exits cleanly.
+// Saves carry data to localStorage before showing the overlay; the try/catch
+// silently ignores storage errors (private browsing, quota exceeded, etc.).
 
 async function triggerDissolution(score) {
   s.phase = 'dissolving';
@@ -1453,6 +1528,11 @@ function delay(ms) {
 })();
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+// Sulfur reduction is unlocked from the start but at priority 0 — the player
+// must consciously activate it, which triggers the sr_activated milestone and
+// reveals the H and S rows. This is the tutorial moment.
+// The two opening log messages are timed to appear before any UI is visible,
+// giving the player something to read while they orient.
 
 // Mount the starting pathway
 mountPathway('sulfur_red');
