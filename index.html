@@ -325,30 +325,30 @@ body {
   <div>
 
     <div id="elements-panel">
-      <div class="section-label">raw elements</div>
+      <div class="section-label" id="elements-label" style="display:none">raw elements</div>
 
-      <div class="elem-row" id="row-biomass">
+      <div class="elem-row" id="row-biomass" style="display:none">
         <span class="elem-name">biomass</span>
         <span class="elem-val"  id="val-biomass">0.0</span>
         <span class="elem-rate" id="rate-biomass">+0.00/s</span>
         <span class="elem-note" id="note-biomass"></span>
       </div>
 
-      <div class="elem-row" id="row-H">
+      <div class="elem-row" id="row-H" style="display:none">
         <span class="elem-name">hydrogen</span>
         <span class="elem-val"  id="val-H">0.0</span>
         <span class="elem-rate" id="rate-H">+0.35/s</span>
         <span class="elem-note" id="note-H"></span>
       </div>
 
-      <div class="elem-row" id="row-S">
+      <div class="elem-row" id="row-S" style="display:none">
         <span class="elem-name">sulfur</span>
         <span class="elem-val"  id="val-S">0.0</span>
         <span class="elem-rate" id="rate-S">+0.20/s</span>
         <span class="elem-note" id="note-S"></span>
       </div>
 
-      <div class="elem-row" id="row-C">
+      <div class="elem-row" id="row-C" style="display:none">
         <span class="elem-name">carbon</span>
         <span class="elem-val"  id="val-C">0.0</span>
         <span class="elem-rate" id="rate-C">+0.25/s</span>
@@ -384,10 +384,10 @@ body {
       </div>
     </div>
 
-    <div id="atmosphere-panel">
+    <div id="atmosphere-panel" style="display:none">
       <div class="section-label">atmosphere</div>
 
-      <div class="atmo-row">
+      <div class="atmo-row" id="atmo-ch4-row" style="display:none">
         <div class="atmo-top">
           <span class="atmo-name">methane CH₄</span>
           <span>
@@ -399,7 +399,7 @@ body {
         <div class="atmo-bar-track"><div class="atmo-bar-fill cold" id="fill-ch4" style="width:0%"></div></div>
       </div>
 
-      <div class="atmo-row">
+      <div class="atmo-row" id="atmo-h2s-row">
         <div class="atmo-top">
           <span class="atmo-name">hydrogen sulfide H₂S</span>
           <span>
@@ -411,7 +411,7 @@ body {
         <div class="atmo-bar-track"><div class="atmo-bar-fill" id="fill-h2s" style="width:0%"></div></div>
       </div>
 
-      <div id="temp-row">
+      <div id="temp-row" style="display:none">
         <span>temperature</span>
         <span id="temp-effect" class="penalty">frigid — biological rates ×0.82</span>
       </div>
@@ -425,14 +425,14 @@ body {
     <div id="pathways-panel">
       <div class="section-label" style="display:flex; justify-content:space-between; align-items:baseline;">
         <span>metabolic pathways</span>
-        <span id="mp-display" style="font-size:11px; letter-spacing:0.1em;">
+        <span id="mp-display" style="font-size:11px; letter-spacing:0.1em; display:none">
           <span id="mp-used">3</span> / <span id="mp-total">10</span> MP
         </span>
       </div>
       <div id="pathways-list"></div>
     </div>
 
-    <div id="upgrades-panel">
+    <div id="upgrades-panel" style="display:none">
       <div class="section-label">upgrades</div>
       <div id="upgrades-list"></div>
     </div>
@@ -534,7 +534,7 @@ const PATHWAYS = [
     hPerUnit:   0.24,
     inputs:     { S: 0.11 },
     outputs:    { biomass: 0.22, h2s: 0.10 },
-    defaultPri: 3,
+    defaultPri: 0,
   },
   {
     id:         'iron_red',
@@ -827,11 +827,38 @@ const UPGRADES = [
 // ─── Milestones ───────────────────────────────────────────────────────────────
 
 const MILESTONES = [
+  // ── Progressive UI reveals ────────────────────────────────────────────────
   {
-    key:  'first_biomass',
-    cond: () => s.biomass >= 2,
-    msg:  'the chemistry yields energy',
+    key:  'sr_activated',
+    cond: () => s.pri.sulfur_red > 0,
+    msg:  'hydrogen and sulfur, consumed. something is produced.',
+    onTrigger: () => {
+      reveal('elements-label');
+      reveal('row-H');
+      reveal('row-S');
+    },
   },
+  {
+    key:  'biomass_visible',
+    cond: () => s.biomass >= 0.8,
+    msg:  'biomass — chemical energy, stored. it will fund what comes next.',
+    onTrigger: () => { reveal('row-biomass'); },
+  },
+  {
+    key:  'h2s_visible',
+    cond: () => s.h2s >= 0.4,
+    msg:  'hydrogen sulfide accumulates. a byproduct of the work.',
+    onTrigger: () => {
+      reveal('atmosphere-panel');
+    },
+  },
+  {
+    key:  'temp_visible',
+    cond: () => s.ch4 >= 10,
+    msg:  'temperature. the atmosphere holds warmth differently now.',
+    onTrigger: () => { reveal('temp-row'); },
+  },
+  // ── Narrative ─────────────────────────────────────────────────────────────
   {
     key:  'h_escape_warning',
     cond: () => s.H >= CFG.H_CAP - 2,
@@ -840,12 +867,7 @@ const MILESTONES = [
   {
     key:  'h2s_rising',
     cond: () => s.h2s >= 12,
-    msg:  'hydrogen sulfide accumulates in the rock pores',
-  },
-  {
-    key:  'ch4_trace',
-    cond: () => s.ch4 >= 5,
-    msg:  'methane enters the atmosphere for the first time',
+    msg:  'hydrogen sulfide builds in the rock pores. if left unchecked, the chemistry suffers.',
   },
   {
     key:  'ch4_warming',
@@ -866,9 +888,7 @@ const MILESTONES = [
     key:  'legacy_reveal',
     cond: () => computeScore() > 0,
     msg:  'the substrate begins to record what is done here',
-    onTrigger: () => {
-      document.getElementById('legacy-panel').style.display = '';
-    },
+    onTrigger: () => { reveal('legacy-panel'); },
   },
   {
     key:  'score_15',
@@ -1094,6 +1114,8 @@ function checkUpgradeVisibility() {
 }
 
 function mountUpgrade(u) {
+  if (s.visibleUpgrades.size === 1) reveal('upgrades-panel');
+
   const btn = document.createElement('button');
   btn.className = 'upgrade-btn';
   btn.id = 'upg-' + u.id;
@@ -1117,11 +1139,36 @@ function mountUpgrade(u) {
 
 // ─── Pathway mount ────────────────────────────────────────────────────────────
 
+// ─── Progressive reveal ───────────────────────────────────────────────────────
+
+function reveal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.display = '';
+  el.style.transition = 'opacity 0.7s ease';
+  setTimeout(() => { el.style.opacity = '1'; }, 20);
+}
+
 function unlockPath(id) {
   s.unlocked[id] = true;
   const pDef = PATHWAYS.find(p => p.id === id);
   if (pDef) s.pri[id] = pDef.defaultPri;
   mountPathway(id);
+
+  // Reveal MP budget when second pathway unlocks
+  const unlockedCount = Object.values(s.unlocked).filter(Boolean).length;
+  if (unlockedCount === 2) {
+    reveal('mp-display');
+    addLog('metabolic points are finite. what is spent here cannot be spent elsewhere.');
+  }
+
+  // Reveal C row and CH4 meter when methanogenesis unlocks
+  if (id === 'methanogenesis') {
+    reveal('row-C');
+    reveal('atmo-ch4-row');
+    addLog('carbon becomes relevant. methane is the exhaust.');
+  }
 }
 
 function mountPathway(id) {
@@ -1410,7 +1457,8 @@ function delay(ms) {
 // Mount the starting pathway
 mountPathway('sulfur_red');
 
-addLog('you are in the substrate. chemistry is all there is.');
+setTimeout(() => addLog('you are in the substrate. chemistry is all there is.'), 800);
+setTimeout(() => addLog('sulfur and hydrogen seep from the rock. they want to combine.'), 4500);
 
 lastTick = performance.now();
 setTimeout(tick, CFG.TICK_MS);
