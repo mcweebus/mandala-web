@@ -44,9 +44,9 @@ body {
 /* ── Main grid ──────────────────────────────────────── */
 #main {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 3rem;
-  max-width: 900px;
+  max-width: 1200px;
 }
 
 .section-label {
@@ -260,10 +260,7 @@ body {
 #score-val  { font-size: 12px; color: var(--number); text-align: right; }
 
 /* ── Log ─────────────────────────────────────────────── */
-#log-section {
-  margin-top: 2.5rem;
-  max-width: 900px;
-}
+#log-section {}
 #log { font-size: 12px; color: var(--dim); }
 #log p { margin-bottom: 0.2rem; opacity: 0.5; transition: opacity 2.5s ease; }
 #log p.fresh { opacity: 1; color: var(--text); }
@@ -438,9 +435,16 @@ body {
     </div>
 
   </div>
+
+  <!-- RIGHT: Observations -->
+  <div id="log-section">
+    <div class="section-label">observations</div>
+    <div id="log"></div>
+  </div>
+
 </div>
 
-<!-- Legacy (full width) -->
+<!-- Legacy (full width, below grid) -->
 <div id="legacy-panel" style="display:none">
   <div class="section-label">substrate legacy — what the next stage inherits</div>
 
@@ -484,12 +488,6 @@ body {
     <div id="score-bar-track"><div id="score-bar-fill" style="width:0%"></div></div>
     <span id="score-val">0.0 / 60</span>
   </div>
-</div>
-
-<!-- Log -->
-<div id="log-section">
-  <div class="section-label">observations</div>
-  <div id="log"></div>
 </div>
 
 <!-- Dissolution overlay -->
@@ -677,7 +675,7 @@ const UPGRADES = [
     label: 'serpentinization expansion',
     sub:   '+0.25 H/s — deeper vent access',
     cost:  { biomass: 10 },
-    show:  () => s.biomass >= 3,
+    show:  () => s.biomass >= 10,
     buy:   () => { s.rH += 0.25; },
     log:   'more H/s means H-consuming pathways run at full rate more often. useful before nitrogen fixation comes online.',
   },
@@ -686,7 +684,7 @@ const UPGRADES = [
     label: 'sulfur vent',
     sub:   '+0.18 S/s',
     cost:  { biomass: 18 },
-    show:  () => s.biomass >= 8,
+    show:  () => s.biomass >= 20,
     buy:   () => { s.rS += 0.18; },
     log:   'more S/s keeps sulfur reduction running without input starvation.',
   },
@@ -695,7 +693,7 @@ const UPGRADES = [
     label: 'CO₂ diffusion',
     sub:   '+0.20 C/s — surface chemistry reaches depth',
     cost:  { biomass: 24 },
-    show:  () => s.biomass >= 12,
+    show:  () => s.biomass >= 32,
     buy:   () => { s.rC += 0.20; },
     log:   'carbon feeds methanogenesis and acetogenesis. both are unlockable mid-game.',
   },
@@ -858,13 +856,13 @@ const MILESTONES = [
   },
   {
     key:  'biomass_visible',
-    cond: () => s.biomass >= 0.8,
+    cond: () => s.biomass >= 4,
     msg:  'biomass is your currency for upgrades. pathways that run phosphate and magnesium also consume it — keep net production positive.',
     onTrigger: () => { reveal('row-biomass'); },
   },
   {
     key:  'h2s_visible',
-    cond: () => s.h2s >= 0.4,
+    cond: () => s.h2s >= 2,
     msg:  'H₂S penalizes all biological rates: ×0.85 above 30, ×0.70 above 60. sulfide oxidation (unlockable later) converts it back to sulfur.',
     onTrigger: () => {
       reveal('atmosphere-panel');
@@ -1450,11 +1448,33 @@ function render(score) {
 }
 
 // ─── Log ─────────────────────────────────────────────────────────────────────
-// Messages are prepended (newest at top). The 'fresh' class applies a brief
-// highlight animation; it's removed after 3.5s. Log is capped at 14 entries
-// to keep the page from growing unbounded.
+// Messages queue up and drain at LOG_GAP_MS intervals so they never pile on
+// at once. Calling addLog() immediately schedules the next available slot.
+// Log is capped at 14 entries to keep the page from growing unbounded.
+
+const LOG_GAP_MS = 5000; // minimum ms between consecutive log entries
+const _logQueue  = [];
+let   _logTimer  = null;
+let   _logLastAt = 0;
 
 function addLog(msg) {
+  _logQueue.push(msg);
+  if (!_logTimer) _scheduleNextLog();
+}
+
+function _scheduleNextLog() {
+  if (_logQueue.length === 0) { _logTimer = null; return; }
+  const now  = performance.now();
+  const wait = Math.max(0, _logLastAt + LOG_GAP_MS - now);
+  _logTimer = setTimeout(() => {
+    _appendLog(_logQueue.shift());
+    _logLastAt = performance.now();
+    _logTimer  = null;
+    _scheduleNextLog();
+  }, wait);
+}
+
+function _appendLog(msg) {
   const logEl = document.getElementById('log');
   const p = document.createElement('p');
   p.textContent = msg;
@@ -1538,8 +1558,11 @@ function delay(ms) {
 // Mount the starting pathway
 mountPathway('sulfur_red');
 
-setTimeout(() => addLog('raise sulfur reduction priority to begin producing biomass.'), 800);
-setTimeout(() => addLog('biomass funds upgrades. H and S are consumed. H₂S will build as a byproduct.'), 4500);
+// Enqueue both opening messages at 3s; the queue spaces them LOG_GAP_MS apart.
+setTimeout(() => {
+  addLog('raise sulfur reduction priority to begin producing biomass.');
+  addLog('biomass funds upgrades. H and S are consumed. H₂S will build as a byproduct.');
+}, 3000);
 
 lastTick = performance.now();
 setTimeout(tick, CFG.TICK_MS);
