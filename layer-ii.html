@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>mandala — layer ii</title>
+<title>terraform — layer ii</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -222,7 +222,7 @@ body {
 <body>
 
 <div id="header">
-  <div id="title">mandala &nbsp;·&nbsp; <em>layer ii</em> &nbsp;·&nbsp; cyanobacteria</div>
+  <div id="title">terraform &nbsp;·&nbsp; <em>layer ii</em> &nbsp;·&nbsp; cyanobacteria</div>
 </div>
 
 <div id="main">
@@ -305,7 +305,7 @@ const TICK_MS    = 80;
 
 function loadCarry() {
   try {
-    const raw = localStorage.getItem('mandala_carry_l1');
+    const raw = localStorage.getItem('terraform_carry_l1');
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
@@ -652,7 +652,7 @@ async function triggerDissolution() {
 
   // Save carry state for layer iii
   try {
-    localStorage.setItem('mandala_carry_l2', JSON.stringify({
+    localStorage.setItem('terraform_carry_l2', JSON.stringify({
       oxygen_total:   Math.round(s.oxygen * 10) / 10,
       o2_fraction:    1.0,
       glucose_peak:   Math.round(s.glucose * 10) / 10,
